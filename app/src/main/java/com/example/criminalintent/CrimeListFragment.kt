@@ -4,20 +4,22 @@ import android.content.Context
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.ListAdapter
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.view.View.EMPTY_STATE_SET
+import android.view.View.GONE
+import android.widget.*
+import androidx.core.view.isEmpty
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.criminalintent.database.CrimeDatabase
+import kotlinx.android.synthetic.main.fragment_crime_list.*
 import java.util.*
+import kotlin.collections.emptyList as emptyList1
 
 private const val TAG = "CrimeListFragment"
 
@@ -30,7 +32,8 @@ class CrimeListFragment : Fragment() {
     }
     private var callbacks: Callbacks? = null
     private lateinit var crimeRecyclerView: RecyclerView
-    private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
+    private var adapter: CrimeAdapter? = CrimeAdapter(emptyList1())
+    private lateinit var newCrimeButton: Button
 
     private val crimeListViewModel: CrimeListViewModel by lazy {
         ViewModelProviders.of(this).get(CrimeListViewModel::class.java)
@@ -39,6 +42,12 @@ class CrimeListFragment : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         callbacks = context as Callbacks?
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+
     }
 
     override fun onCreateView(
@@ -52,6 +61,12 @@ class CrimeListFragment : Fragment() {
             view.findViewById(R.id.crime_recycler_view) as RecyclerView
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
         crimeRecyclerView.adapter = adapter
+        newCrimeButton=view.findViewById(R.id.new_crime_button)
+        newCrimeButton.setOnClickListener {
+            val crime = Crime()
+            crimeListViewModel.addCrime(crime)
+            callbacks?.onCrimeSelected(crime.id)
+        }
         return view
     }
 
@@ -65,6 +80,7 @@ class CrimeListFragment : Fragment() {
                     updateUI(crimes)
                 }
             })
+
     }
 
     override fun onDetach() {
@@ -72,9 +88,30 @@ class CrimeListFragment : Fragment() {
         callbacks = null
     }
 
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.fragment_crime_list,menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when(item.itemId){
+            R.id.new_crime->{
+                val crime =Crime()
+                crimeListViewModel.addCrime(crime)
+                callbacks?.onCrimeSelected(crime.id)
+                true
+            }
+            else -> return super.onOptionsItemSelected(item)
+        }
+    }
+
     private fun updateUI(crimes: List<Crime>) {
         adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
+
+        if (!(crimes.isEmpty())) {
+            empty_view.visibility=View.INVISIBLE
+        }
     }
 
     private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
