@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.telecom.Call
 import android.widget.DatePicker
 import androidx.fragment.app.DialogFragment
-import kotlinx.android.synthetic.main.list_item_crime_police.*
+
 import java.util.*
 private const val ARG_DATE ="date"
 class DatePickerFragment: DialogFragment() {

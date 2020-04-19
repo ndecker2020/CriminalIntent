@@ -18,6 +18,7 @@ import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -43,6 +44,7 @@ private const val PERMISSION_READ_CONTACTS = 2
 private const val REQUEST_PHOTO = 3
 private const val DIALOG_TIME= "DialogTime"
 private const val DATE_FORMAT= "EEE, MMM, dd"
+private const val DIALOG_PHOTO="DialogPhoto"
 class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.Callbacks {
     private var hasPhone = false
     private lateinit var crime: Crime
@@ -57,6 +59,8 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
     private lateinit var callSuspectButton: Button
     private lateinit var photoButton: ImageButton
     private lateinit var photoView: ImageView
+    private var photoWidth: Int=0
+    private var photoHeight: Int =0
 
 
     private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
@@ -102,6 +106,14 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
                         "com.example.criminalintent.fileprovider",
                         photoFile)
                     updateUI()
+                    val observer = photoView.viewTreeObserver
+                    val listener = ViewTreeObserver.OnGlobalLayoutListener {
+                        photoHeight = photoView.measuredHeight
+                        photoWidth = photoView.measuredWidth
+                        updatePhotoView(photoHeight,photoWidth)
+                    }
+
+                    observer.addOnGlobalLayoutListener(listener)
                 }
             }
         )
@@ -112,6 +124,7 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
             hasPhone = true
             callSuspectButton.isEnabled = true
         }
+
     }
 
     override fun onStart() {
@@ -189,6 +202,13 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
         }
         callSuspectButton.isEnabled = hasPhone
 
+        photoView.setOnClickListener {
+            val packageManager= fragmentManager
+            val dialog = PhotoViewFragment.newInstance(photoFile)
+            dialog.show(packageManager!!, DIALOG_PHOTO)
+
+        }
+
         photoButton.apply {
             val packageManager: PackageManager = requireActivity().packageManager
             val captureImage = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
@@ -197,6 +217,9 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
             if (resolveActivity==null){
                 isEnabled = false
             }
+
+
+
 
             setOnClickListener {
                 captureImage.putExtra(MediaStore.EXTRA_OUTPUT,photoUri)
@@ -260,12 +283,12 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
         }
         callSuspectButton.isEnabled = crime.phoneNumber.isNotEmpty()
 
-        updatePhotoView()
+        updatePhotoView(photoHeight,photoWidth)
     }
 
-    private fun updatePhotoView(){
+    private fun updatePhotoView(photoHeight: Int,photoWidth: Int){
         if (photoFile.exists()){
-            val bitmap = getScaledBitmap(photoFile.path,requireActivity())
+            val bitmap = getScaledBitmap(photoFile.path,photoWidth,photoHeight)
             photoView.setImageBitmap(bitmap)
         }
         else{
@@ -284,7 +307,7 @@ class CrimeFragment: Fragment(),DatePickerFragment.Callbacks,TimePickerFragment.
         when{
             resultCode == REQUEST_PHOTO->{
                 requireActivity().revokeUriPermission(photoUri,Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                updatePhotoView()
+                updatePhotoView(photoHeight,photoWidth)
             }
             resultCode != Activity.RESULT_OK -> return
             requestCode == REQUEST_CONTACT && data != null ->{
